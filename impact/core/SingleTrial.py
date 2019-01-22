@@ -9,6 +9,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, PickleType,
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
+
 class SingleTrial(Base):
     """
     Container for :class:`~TiterObject` to build a whole trial out of different measurements. E.g. one flask would
@@ -19,23 +20,22 @@ class SingleTrial(Base):
 
     id = Column(Integer, primary_key=True)
 
-    trial_identifier_id = Column(Integer,ForeignKey('single_trial_identifier.id'))
+    trial_identifier_id = Column(Integer, ForeignKey('single_trial_identifier.id'))
     _trial_identifier = relationship('SingleTrialIdentifier')
 
     analyte_dict = relationship('TimeCourse',
-                                collection_class = attribute_mapped_collection('analyte_name'),
-                                cascade = 'save-update, delete')
-
+                                collection_class=attribute_mapped_collection('analyte_name'),
+                                cascade='save-update, delete')
 
     stage_indices = Column(PickleType)
 
     parent_id = Column(Integer, ForeignKey('replicate_trial.id'))
 
     stage_parent_id = Column(Integer, ForeignKey('single_trial.id'))
-    stages = relationship('SingleTrial', foreign_keys = 'SingleTrial.stage_parent_id')
+    stages = relationship('SingleTrial', foreign_keys='SingleTrial.stage_parent_id')
 
     class_features = []
-    analyte_types = ['biomass','substrate','product']
+    analyte_types = ['biomass', 'substrate', 'product', 'reporter']
 
     @classmethod
     def register_feature(cls, feature):
@@ -54,10 +54,9 @@ class SingleTrial(Base):
         # Contains information about the stages used in the experiment, TODO
         self.stage_indices = None
         self.stage_list = None
-
+        self.stages = []
         # Data normalized to different features, not serialized
         self.normalized_data = dict()
-
 
         # Register instances of feeatures
         self.features = []
@@ -71,8 +70,7 @@ class SingleTrial(Base):
                 if analyte_type in feature.requires:
                     self.analytes_to_features[analyte_type].append(self.features[-1])
 
-
-
+    #TODO, Fix this. Doesn't work. self.yields_df when yields_df doesn't exist
     def serialize(self):
         serialized_dict = {}
 
@@ -123,32 +121,35 @@ class SingleTrial(Base):
         for analyte_key in self.analyte_dict:
             self.analyte_dict[analyte_key].calculate()
 
+    #Fixed this: SingleTrial does not have an attribute named product_names
     def normalize_data(self, normalize_to):
-        for product in self.product_names:
-            self.normalized_data[product] = self.analyte_dict[product] / self.analyte_dict[normalize_to]
-
+        for analyte in self.analyte_dict:
+            self.normalized_data[analyte] = self.analyte_dict[analyte].data_vector\
+                                            / self.analyte_dict[normalize_to].data_vector
+    #TODO, Implement stages in avg/stdev too.
     def create_stage(self, stage_bounds):
         stage = SingleTrial()
         for analyte in self.analyte_dict:
             stage.add_analyte_data(self.analyte_dict[analyte].create_stage(stage_bounds))
-
+        self.stages.append(stage)
         return stage
 
-    def summary(self, print=False):
+    def summary(self, printFlag=False):
         summary = dict()
 
-        for analyte_type in ['substrate','products','biomass']:
-            summary[analyte_type] = [str(analyte_data) for analyte_data in self.analyte_dict if analyte_data.trial_identifier.analyte_type == analyte_type]
-        summary['number_of_data_points'] = len(self._t)
+        for analyte_type in ['substrate', 'products', 'biomass']:
+            summary[analyte_type] = [str(analyte_data) for analyte_data in self.analyte_dict.values() if
+                                     analyte_data.trial_identifier.analyte_type == analyte_type]
+        #summary['number_of_data_points'] = len(self._t)
         summary['run_identifier'] = self.trial_identifier.summary(['strain_id', 'id_1', 'id_2',
-                                                                'replicate_id'])
+                                                                   'replicate_id'])
 
-        if print:
+        if printFlag:
             print(summary)
 
         return summary
 
-    def calculate_mass_balance(self, OD_gdw=None, calculateFBACO2=False):
+    def calculate_mass_balance(self, OD_gdw=None, initial_substrate=0, calculateFBACO2=False):
         """
         Calculate a mass balance given the supplied substrate and products
 
@@ -196,10 +197,19 @@ class SingleTrial(Base):
             OD_gdw = 0.33  # Correlation for OD to gdw for mass balance
 
         # self.substrate_consumed
-
+        # sorting analytes into OD, products, etc.
+        self.products=[]
+        for analyte in self.analyte_dict.values():
+            if analyte.type == 'biomass':
+                self.OD = analyte
+            if analyte.type == 'product':
+                self.products.append(analyte)
+            if analyte.type == 'substrate':
+                self.substrate = analyte
+        substrate_consumed = self.substrate.data_vector - initial_substrate
         if self.OD is not None:
             # Calc mass of biomass
-            biomass_gdw = self._OD.data_vector / OD_gdw
+            biomass_gdw = self.OD.data_vector / OD_gdw
         else:
             biomass_gdw = None
 
@@ -208,13 +218,15 @@ class SingleTrial(Base):
 
         # Calculate the mass balance (input-output)
         if biomass_gdw is None:   biomass_gdw = np.zeros(
-            [len(self.substrate_consumed)])  # If this isn't defined, set biomass to zero
-        massBalance = self.substrate_consumed - totalProductMass - biomass_gdw
-
-        return {'substrate_consumed': self.substrate_consumed,
-                'totalProductMass' : totalProductMass,
-                'biomass_gdw'      : biomass_gdw,
-                'massBalance'      : massBalance}
+            [len(substrate_consumed)])  # If this isn't defined, set biomass to zero
+        if len(biomass_gdw) == len(totalProductMass) and len(biomass_gdw) == len(substrate_consumed):
+            massBalance = substrate_consumed - totalProductMass - biomass_gdw
+        else:
+            massBalance = substrate_consumed[-1] - totalProductMass[-1] - biomass_gdw[-1]
+        return {'substrate_consumed': substrate_consumed,
+                'totalProductMass'  : totalProductMass,
+                'biomass_gdw'       : biomass_gdw,
+                'massBalance'       : massBalance}
 
     def calculate_ODE_fit(self):
         """
@@ -289,12 +301,14 @@ class SingleTrial(Base):
 
         # Check if this analyte already exists
         if analyte_data.trial_identifier.analyte_name in self.analyte_dict:
+            print('Duplicate ReplicateTrialIdentifier: ',
+                  str(analyte_data.trial_identifier))
+            print('Original ReplicateTrialIdentifier: ',
+                  str(self.analyte_dict[analyte_data.trial_identifier.analyte_name].trial_identifier))
             raise Exception('A duplicate titer was added to the single trial,\n'
                             'Make sure replicates are defined properly,\n'
                             'Duplicate ReplicateTrialIdentifier: ',
-                            vars(analyte_data.trial_identifier))
-
-
+                            str(analyte_data.trial_identifier))
 
         self.analyte_dict[analyte_data.trial_identifier.analyte_name] = analyte_data
 
@@ -306,21 +320,21 @@ class SingleTrial(Base):
         # check if trial identifiers match
         if len(self.analyte_dict) == 1:
             self.trial_identifier = SingleTrialIdentifier()
-            for attr in ['strain', 'media', 'environment','id_1', 'id_2', 'replicate_id']:
+            for attr in ['strain', 'media', 'environment', 'id_1', 'id_2', 'replicate_id']:
                 setattr(self.trial_identifier, attr, getattr(analyte_data.trial_identifier, attr))
         else:
-            for attr in ['strain', 'media', 'environment','id_1', 'id_2', 'replicate_id']:
+            for attr in ['strain', 'media', 'environment', 'id_1', 'id_2', 'replicate_id']:
                 # Check for no match
-                if str(getattr(self.trial_identifier,attr)) != str(getattr(analyte_data.trial_identifier, attr)):
+                if str(getattr(self.trial_identifier, attr)) != str(getattr(analyte_data.trial_identifier, attr)):
                     raise Exception('Trial identifiers do not match at the following attribute: '
                                     + attr
-                                    +' val 1: '
-                                    + str(getattr(self.trial_identifier,attr))
-                                    +' val 2: '
+                                    + ' val 1: '
+                                    + str(getattr(self.trial_identifier, attr))
+                                    + ' val 2: '
                                     + str(getattr(analyte_data.trial_identifier, attr)))
                 # If match, ensure attrs refer to same instance
                 else:
-                    setattr(analyte_data.trial_identifier,attr,getattr(self.trial_identifier,attr))
+                    setattr(analyte_data.trial_identifier, attr, getattr(self.trial_identifier, attr))
 
         # Set the parent
         analyte_data.parent = self
@@ -332,13 +346,14 @@ class SingleTrial(Base):
         temp_analyte_df[analyte_data.trial_identifier.analyte_name] = analyte_data.pd_series
 
         # Merging the dataframes this way will allow different time indices for different analytes
-        self.analyte_df = pd.merge(self.analyte_df,temp_analyte_df,left_index=True,right_index=True, how='outer')
+        self.analyte_df = pd.merge(self.analyte_df, temp_analyte_df, left_index=True, right_index=True, how='outer')
         self.t = self.analyte_df.index
 
-    def link_identifiers(self, trial_identifier, attrs=['strain','media','environment']):
+    def link_identifiers(self, trial_identifier, attrs=['strain', 'media', 'environment']):
         for attr in attrs:
-            setattr(self.trial_identifier,attr,getattr(trial_identifier,attr))
+            setattr(self.trial_identifier, attr, getattr(trial_identifier, attr))
+
 
 # Register known features
-for feature in [ProductYieldFactory,SpecificProductivityFactory]:
+for feature in [ProductYieldFactory, SpecificProductivityFactory, ODNormalizedDataFactory]:
     SingleTrial.register_feature(feature)

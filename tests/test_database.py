@@ -1,6 +1,7 @@
 import unittest
 import impact as impt
 import os
+import pandas as pd
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):
@@ -65,6 +66,8 @@ class TestDatabase(unittest.TestCase):
         tc.trial_identifier = ti
         for time, data in ((0, 0), (1, 5), (2, 10)):
             tc.add_timepoint(impt.TimePoint(trial_identifier=ti, time=time, data=data))
+        tc.pd_series = pd.Series([timePoint.data for timePoint in tc.time_points],index=[timePoint.time for timePoint in\
+                                                                                         tc.time_points])
         self.session.add(tc)
         self.session.commit()
 
@@ -101,6 +104,9 @@ class TestDatabase(unittest.TestCase):
         tc.trial_identifier = ti
         for time, data in ((0, 0), (1, 5), (2, 10)):
             tc.add_timepoint(impt.TimePoint(trial_identifier=ti, time=time, data=data))
+        tc.pd_series = pd.Series([timePoint.data for timePoint in tc.time_points],index=[timePoint.time for timePoint in\
+                                                                                         tc.time_points])
+
         self.session.add(tc)
 
         st = impt.SingleTrial()

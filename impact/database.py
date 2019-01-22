@@ -1,8 +1,5 @@
 # coding=utf-8
-from sqlalchemy import event
-from sqlalchemy.orm import mapper
 from sqlalchemy.ext.declarative import declarative_base
-from .core import TrialIdentifier as ti
 from sqlalchemy import create_engine
 
 Base = declarative_base()
@@ -19,17 +16,17 @@ def create_session(engine='default'):
         engine = bind_engine()
 
     # create_db()
-    session_maker = sessionmaker(bind=engine,autoflush=True,expire_on_commit=False)
-    return session_maker()
+    Session = sessionmaker(bind=engine,autoflush=True,expire_on_commit=False)
+    return Session()
 
 
 def create_db():
+    Base.metadata.drop_all(bind_engine())
     Base.metadata.create_all(bind_engine())
-
 
 session = create_session()
 
-
+# Code to remove duplicates and consolidate references to common elements in database
 # @event.listens_for(session, 'before_flush')
 # def remove_duplicates(session, flush_context, instances):
 #     for cls in [ti.Environment, ti.Media, ti.Strain]:

@@ -5,6 +5,16 @@ Functions for curve fitting
 import numpy as np
 from lmfit import Model
 
+
+# class EquationFit(object):
+#     def __init__(self):
+#         parameter_list = []
+#         equation = []
+#         method = []
+#
+#     def calculate_parameters(self):
+#
+
 class CurveFitObject(object):
     """
     Wrapper for curve fitting objects

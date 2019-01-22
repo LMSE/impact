@@ -1,4 +1,4 @@
-from setuptools import setup
+import setuptools
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
@@ -8,10 +8,10 @@ for extra in ['docs','plotting','modeling']:
     with open('requirements'+'_'+extra+'.txt') as f:
         extras[extra] = f.read().splitlines()
 
-setup(
+setuptools.setup(
     name='impact',
-    version='0.1',
-    packages=['impact'],
+    version='1.0.0',
+    packages=setuptools.find_packages(),
     url='www.github.com/nvenayak/impact',
     license='',
     author='Naveen Venayak',

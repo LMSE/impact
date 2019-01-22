@@ -23,7 +23,7 @@ class CoreTestCase(unittest.TestCase):
         # except FileNotFoundError:
         #     pass
         #
-        engine = impact.bind_engine()
+        engine = impact.database.bind_engine()
         impact.database.Base.metadata.create_all(engine)
         # Create experiment
         self.expt = impact.Experiment()
@@ -75,9 +75,9 @@ class CoreTestCase(unittest.TestCase):
         # expt.db_load(db_name=self.db_name, experiment_id=experiment_id)
 
         # Plot
-        self.expt.printGenericTimeCourse(titersToPlot=['pyruvate', 'acetate', '1,3-butanediol', 'acetaldehyde',
-                                                  'ethanol', 'meso-2,3-butanediol', 'acetoin'],
-                                    output_type='image', titerFlag = False, yieldFlag = True)
+        # self.expt.printGenericTimeCourse(titersToPlot=['pyruvate', 'acetate', '1,3-butanediol', 'acetaldehyde',
+        #                                           'ethanol', 'meso-2,3-butanediol', 'acetoin'],
+        #                             output_type='image', titerFlag = False, yieldFlag = True)
 
 class BasicTestCase(unittest.TestCase):
     def test_create_trial_identifier(self):

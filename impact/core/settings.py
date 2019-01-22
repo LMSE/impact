@@ -54,6 +54,9 @@ class Settings(Base):
         self.default_outlier_cleaning_flag = False
         self.outlier_cleaning_flag = False
 
+        # A value between 0 and 1, > 1 means removing the replicate makes the yield worse
+        self.std_deviation_cutoff = 0.1
+
         # curve_fitting
-        self.fit_type = {}
+        self.fit_type = 'gompertz'
 settings = Settings()

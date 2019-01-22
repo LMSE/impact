@@ -14,7 +14,7 @@ class TestStages(unittest.TestCase):
         expt.calculate()
 
         # expt.calculate()
-        for stage in expt.stages:
+        for stage in expt.stages.values():
             # print('in1')
             for replicate in stage.replicate_trial_dict.values():
                 # print('in2')

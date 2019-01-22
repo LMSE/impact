@@ -6,18 +6,14 @@ import pandas as pd
 from scipy import stats
 
 from .AnalyteData import TimeCourse, FitParameter
-from .SingleTrial import SingleTrial, SpecificProductivityFactory, ProductYieldFactory
+from .SingleTrial import SingleTrial
 from .TrialIdentifier import ReplicateTrialIdentifier
-from .settings import settings
-
-default_outlier_cleaning_flag = settings.default_outlier_cleaning_flag
-max_fraction_replicates_to_remove = settings.max_fraction_replicates_to_remove
-verbose = settings.verbose
 
 from ..database import Base
 from sqlalchemy import Column, Integer, ForeignKey, PickleType, String, event
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.collections import attribute_mapped_collection
+
 
 class ReplicateTrial(Base):
     """
@@ -29,27 +25,27 @@ class ReplicateTrial(Base):
 
     id = Column(Integer, primary_key=True)
 
-    avg_id = Column(Integer,ForeignKey('single_trial.id'))
+    avg_id = Column(Integer, ForeignKey('single_trial.id'))
     avg = relationship('SingleTrial', uselist=False, foreign_keys=[avg_id])
 
-    std_id = Column(Integer,ForeignKey('single_trial.id'))
+    std_id = Column(Integer, ForeignKey('single_trial.id'))
     std = relationship('SingleTrial', uselist=False, foreign_keys=[std_id])
 
     single_trial_dict = relationship('SingleTrial',
-                                     collection_class = attribute_mapped_collection('trial_identifier.replicate_id'),
-                                     foreign_keys = 'SingleTrial.parent_id')
+                                     collection_class=attribute_mapped_collection('trial_identifier.replicate_id'),
+                                     foreign_keys='SingleTrial.parent_id')
 
-    trial_identifier_id = Column(Integer,ForeignKey('replicate_trial_identifier.id'))
+    trial_identifier_id = Column(Integer, ForeignKey('replicate_trial_identifier.id'))
     trial_identifier = relationship('ReplicateTrialIdentifier')
 
-    stage_parent_id = Column(Integer,ForeignKey('replicate_trial.id'))
+    stage_parent_id = Column(Integer, ForeignKey('replicate_trial.id'))
     stages = relationship('ReplicateTrial')
 
-    blank_id = Column(Integer,ForeignKey('single_trial.id'))
-    blank = relationship('SingleTrial',uselist=False, foreign_keys=[blank_id])
+    blank_id = Column(Integer, ForeignKey('single_trial.id'))
+    blank = relationship('SingleTrial', uselist=False, foreign_keys=[blank_id])
 
-    parent = relationship('Experiment',back_populates="replicate_trial_dict")
-    parent_id = Column(Integer,ForeignKey('experiment.id'))
+    parent = relationship('Experiment')  # ,back_populates="replicate_trials")
+    parent_id = Column(Integer, ForeignKey('experiment.id'))
 
     bad_replicates = Column(PickleType)
     replicate_ids = Column(PickleType)
@@ -64,14 +60,14 @@ class ReplicateTrial(Base):
         self.single_trial_dict = {}
 
         self.trial_identifier = ReplicateTrialIdentifier()
-        self.bad_replicates = []
+        self.bad_replicates = dict()
         self.replicate_df = dict()
 
         self.stages = []
         self.features = []
-
+        self.blank_subtraction_flag = False
         for arg in kwargs:
-            setattr(self,arg,kwargs[arg])
+            setattr(self, arg, kwargs[arg])
 
     @property
     def unique_id(self):
@@ -82,24 +78,15 @@ class ReplicateTrial(Base):
         return list(self.single_trial_dict.values())
 
     def calculate(self):
-        for stage in self.stages:
-            stage.calculate()
+        # commented 2 lines below because stage calculation is done once in expt already. no need to do it again
+        # for stage in self.stages:
+        #    stage.calculate()
 
         for single_trial in self.single_trial_dict.values():
             single_trial.calculate()
 
-        if self.blank:  self.substract_blank()
+        if self.blank and not self.blank_subtraction_flag:  self.substract_blank()
         self.calculate_statistics()
-
-    # def serialize(self):
-    #     serialized_dict = {}
-    #
-    #     for replicate_id in self.single_trial_dict:
-    #         serialized_dict[str(replicate_id)] = self.single_trial_dict[replicate_id].serialize()
-    #     serialized_dict['avg'] = self.avg.serialize()
-    #     serialized_dict['std'] = self.std.serialize()
-    #     import json
-    #     return json.dumps(serialized_dict)
 
     def create_stage(self, stage_bounds):
         if stage_bounds is None:
@@ -112,7 +99,10 @@ class ReplicateTrial(Base):
             #     stage.set_blank(blank_stage)
             single_trial = self.single_trial_dict[replicate_id]
             stage.add_replicate(single_trial.create_stage(stage_bounds))
+        #Added this to ensure avg and std are calculated for the stages
+        stage.calculate_statistics()
         self.stages.append(stage)
+
         return stage
 
     def get_normalized_data(self, normalize_to):
@@ -161,6 +151,11 @@ class ReplicateTrial(Base):
 
         # Get info from single trial
         self.single_trial_dict[str(single_trial.trial_identifier.replicate_id)] = single_trial
+        # Adding a bad replicates list for each analyte
+        for analyte in single_trial.analyte_dict:
+            if analyte not in self.bad_replicates.keys():
+                self.bad_replicates[analyte] = []
+
         if len(self.single_trial_dict) == 1:
             self.t = self.single_trial_dict[str(single_trial.trial_identifier.replicate_id)].t
             self.trial_identifier = single_trial.trial_identifier.get_replicate_trial_trial_identifier()
@@ -174,12 +169,11 @@ class ReplicateTrial(Base):
 
         self.check_replicate_unique_id_match()
 
-
         # Extract features from single trial
         for feature in single_trial.features:
             if len(self.features) == 0:
                 self.features.append(feature)
-            elif not isinstance(feature,tuple(type(feature) for feature in self.features)):
+            elif not isinstance(feature, tuple(type(feature) for feature in self.features)):
                 self.features.append(feature)
 
         if live_calculations:
@@ -198,34 +192,26 @@ class ReplicateTrial(Base):
             # Copy a relevant trial identifier
             first_st = [single_trial for single_trial in self.single_trial_dict.values()
                         if analyte in single_trial.analyte_dict][0]
-            # first_st = list(self.single_trial_dict.values())[0]
             try:
                 self.avg.analyte_dict[analyte].trial_identifier = \
-                        first_st\
-                        .analyte_dict[analyte]\
-                        .trial_identifier.\
+                    first_st \
+                        .analyte_dict[analyte] \
+                        .trial_identifier. \
                         get_analyte_data_statistic_identifier()
 
                 self.std.analyte_dict[analyte].trial_identifier = \
-                        first_st\
-                        .analyte_dict[analyte]\
-                        .trial_identifier.\
+                    first_st \
+                        .analyte_dict[analyte] \
+                        .trial_identifier. \
                         get_analyte_data_statistic_identifier()
             except Exception as e:
                 print(first_st.analyte_dict)
                 raise Exception(e)
 
-            # self.std.analyte_dict[analyte].trial_identifier = \
-            #     self.single_trial_dict[list(self.single_trial_dict.keys())[0]]\
-            #         .analyte_dict[analyte]\
-            #         .trial_identifier.\
-            #         get_analyte_data_statistic_identifier()
-
             self.replicate_df[analyte] = pd.DataFrame()
 
             # Get all the trials with the analyte
-            trial_list = [self.single_trial_dict[replicate_id] for replicate_id in self.single_trial_dict
-                          if analyte in self.single_trial_dict[replicate_id].analyte_dict]
+            trial_list = [single_trial for single_trial in self.single_trials if analyte in single_trial.analyte_dict]
 
             # Merge the dataframes for relevant trials
             for trial in trial_list:
@@ -242,48 +228,99 @@ class ReplicateTrial(Base):
             self.avg.analyte_dict[analyte].pd_series = self.replicate_df[analyte].mean(axis=1)
             self.std.analyte_dict[analyte].pd_series = self.replicate_df[analyte].std(axis=1)
 
+            #This is the right way to calculate standard deviations for blank subtraction. You must add the two variances
+            if self.blank_subtraction_flag and analyte in self.blank_subtracted_analytes:
+                self.std.analyte_dict[analyte].pd_series = np.sqrt(np.square(self.std.analyte_dict[analyte].pd_series)
+                                                            + np.square(self.blank.std.analyte_dict[analyte].pd_series))
+            #Assume that stdev for all values <0 is simply 0 since negative values are forced to be 0.
+            #Negative values of any analyte in this context is not possible
+            #self.std.analyte_dict[analyte].pd_series[self.avg.analyte_dict[analyte].pd_series<=0] = 0
             # Calculate statistics for features
+
             for feature in self.features:
-                # Get all the analytes with the feature
-                trial_list = [self.single_trial_dict[replicate_id]
-                              for replicate_id in self.single_trial_dict
-                              if analyte in self.single_trial_dict[replicate_id].analyte_dict
-                              and feature.name in self.single_trial_dict[replicate_id].analyte_dict[analyte].__dict__]
 
+                if feature.name in ['od_normalized_data','specific_productivity']:
 
+                    trial_list = [single_trial
+                                  for single_trial in self.single_trials
+                                  if analyte in single_trial.analyte_dict
+                                  and feature.name in single_trial.analyte_dict[analyte].__dict__]
+                    if len(trial_list)>0:
+                        single_trial_var = []
+                        single_trial_data = []
+                        for trial in trial_list:
+                            feature_object = getattr(trial.analyte_dict[analyte], feature.name)
+                            feature_data = feature_object.data
+                            if feature_data is not None:
+                                single_trial_data.append(feature_data)
+                            if self.blank:
+                                with np.errstate(divide='ignore'):
+                                    temp_var = np.square(feature_data)*(np.square(self.blank.std.analyte_dict[analyte].pd_series\
 
-                # Merge them all, in case they don't share the same index (missing data)
-                df = pd.DataFrame()
-                for trial in trial_list:
-                    df = df.merge(pd.DataFrame({
-                        str(trial.trial_identifier.replicate_id):
-                            pd.Series(getattr(trial.analyte_dict[analyte], feature.name).data,
-                                      index=trial.analyte_dict[analyte].time_vector)}),
-                                  left_index=True,right_index=True,how='outer')
+                                               /trial.analyte_dict[analyte].pd_series)+
+                                                np.square(self.blank.std.analyte_dict['OD600'].pd_series
+                                                          /trial.analyte_dict['OD600'].pd_series))
+                                    temp_var[trial.analyte_dict[analyte].pd_series == 0] = 0
+                                    temp_var[trial.analyte_dict['OD600'].pd_series == 0] = 0
+                                    single_trial_var.append(temp_var)
+                        if single_trial_data:
+                            rep_mean = sum(single_trial_data)/len(trial_list)
+                        else:
+                            rep_mean = None
 
-                # Calculate and set the feature statistics
-                setattr(self.avg.analyte_dict[analyte],feature.name, pd.Series(df.mean(axis=1)))
-                setattr(self.std.analyte_dict[analyte], feature.name, pd.Series(df.std(axis=1)))
+                        #This is the variance due to individual normalized datapoints
+                        rep_var = pd.Series(data=np.var(single_trial_data,axis=0),index=trial_list[-1].analyte_dict[analyte].time_vector)
+                        # Variance on dataset due to blanks is average of individual standard deviation squared.
+                        # Total variance is variance due to blanks + variance between individual normalized datapoints
+                        if self.blank:
+                            rep_var = sum(single_trial_var)/np.square(len(single_trial_var)) + rep_var
+
+                        setattr(self.std.analyte_dict[analyte], feature.name, np.sqrt(rep_var).values)
+                        setattr(self.avg.analyte_dict[analyte], feature.name, rep_mean)
+
+                else:
+                    # Get all the analytes with the feature
+                    trial_list = [single_trial
+                                  for single_trial in self.single_trials
+                                  if analyte in single_trial.analyte_dict
+                                  and feature.name in single_trial.analyte_dict[analyte].__dict__]
+
+                    # Merge them all, in case they don't share the same index (missing data)
+                    df = pd.DataFrame()
+                    for trial in trial_list:
+                        df = df.merge(pd.DataFrame({
+                            str(trial.trial_identifier.replicate_id):
+                                pd.Series(getattr(trial.analyte_dict[analyte], feature.name).data,
+                                          index=trial.analyte_dict[analyte].time_vector)}),
+                            left_index=True, right_index=True, how='outer')
+
+                    # Calculate and set the feature statistics
+                    setattr(self.avg.analyte_dict[analyte], feature.name, pd.Series(df.mean(axis=1)).values)
+                    setattr(self.std.analyte_dict[analyte], feature.name, pd.Series(df.std(axis=1)).values)
+
 
         # Calculate fit param stats
         for analyte in unique_analytes:
             for stat, calc in zip(['avg', 'std'], [np.mean, np.std]):
                 # If a fit_params exists, calculate the stats
-                if None not in [self.single_trial_dict[replicate_id].analyte_dict[analyte].fit_params
-                                if analyte in self.single_trial_dict[replicate_id].analyte_dict else None
-                                for replicate_id in self.single_trial_dict]:
+                if None not in [single_trial.analyte_dict[analyte].fit_params
+                                if analyte in single_trial.analyte_dict else None
+                                for single_trial in self.single_trials]:
                     temp = dict()
-                    for param in self.single_trial_dict[list(self.single_trial_dict.keys())[0]].analyte_dict[analyte].fit_params:
-                        temp[param] = FitParameter(param,calc(
-                            [self.single_trial_dict[replicate_id].analyte_dict[analyte].fit_params[param].parameter_value
+                    for param in self.single_trial_dict[list(self.single_trial_dict.keys())[0]].analyte_dict[
+                        analyte].fit_params:
+                        temp[param] = FitParameter(param, calc(
+                            [self.single_trial_dict[replicate_id].analyte_dict[analyte].fit_params[
+                                 param].parameter_value
                              for replicate_id in self.single_trial_dict
-                             if self.single_trial_dict[replicate_id].trial_identifier.replicate_id not in self.bad_replicates]))
+                             if self.single_trial_dict[
+                                 replicate_id].trial_identifier.replicate_id not in self.bad_replicates[analyte]]))
 
                     getattr(self, stat).analyte_dict[analyte].fit_params = temp
-                # else:
-                #     print([self.single_trial_dict[replicate_id].analyte_dict[analyte].fit_params
-                #            for replicate_id in self.single_trial_dict
-                #            if analyte in self.single_trial_dict[replicate_id].analyte_dict])
+                    # else:
+                    #     print([self.single_trial_dict[replicate_id].analyte_dict[analyte].fit_params
+                    #            for replicate_id in self.single_trial_dict
+                    #            if analyte in self.single_trial_dict[replicate_id].analyte_dict])
 
     def get_analytes(self):
         # Get all unique analytes
@@ -300,7 +337,7 @@ class ReplicateTrial(Base):
         verbose = settings.verbose
         max_fraction_replicates_to_remove = settings.max_fraction_replicates_to_remove
         outlier_cleaning_flag = settings.outlier_cleaning_flag
-
+        std_deviation_cutoff = settings.std_deviation_cutoff
         # http://stackoverflow.com/questions/23199796/detect-and-exclude-outliers-in-pandas-dataframe
         df = self.replicate_df[analyte]
         col_names = list(df.columns.values)
@@ -331,13 +368,14 @@ class ReplicateTrial(Base):
             # by a certain threshold, the replicate is flagged as removed
             if outlier_removal_method == 'iterative_removal':
                 bad_replicate_cols = []
-                good_replicate_cols = []
+                good_replicate_cols = df.columns.values
 
                 # Determine the max number of replicates to remove
-                for _ in range(int(len(df) * max_fraction_replicates_to_remove)):
+                for _ in range(int(len(self.single_trial_dict) * max_fraction_replicates_to_remove)):
                     # A value between 0 and 1, > 1 means removing the replicate makes the yield worse
-                    std_deviation_cutoff = 0.1
+
                     # df = pd.DataFrame({key: np.random.randn(5) for key in ['a', 'b', 'c']})
+                    std_by_mean = np.mean(abs(backup.std(axis = 1)/backup.mean(axis = 1)))
                     temp_std_by_mean = {}
                     for temp_remove_replicate in list(df.columns.values):
                         indices = [replicate for i, replicate in enumerate(df.columns.values) if
@@ -348,13 +386,14 @@ class ReplicateTrial(Base):
                         temp_std_by_mean[temp_remove_replicate] = np.mean(abs(temp_std / temp_mean))
 
                     temp_min_val = min([temp_std_by_mean[key] for key in temp_std_by_mean])
-                    if temp_min_val < std_deviation_cutoff:
-                        bad_replicate_cols.append([key for key in temp_std_by_mean if temp_std_by_mean[key] == temp_min_val][0])
+                    if temp_min_val < std_deviation_cutoff and temp_min_val < std_by_mean:
+                        bad_replicate_cols.append(
+                            [key for key in temp_std_by_mean if temp_std_by_mean[key] == temp_min_val][0])
 
                     good_replicate_cols = [key for key in temp_std_by_mean if key not in bad_replicate_cols]
                     df = df[good_replicate_cols]
-            self.replicate_df[analyte] = df[good_replicate_cols]
-            self.bad_replicates = bad_replicate_cols
+                self.replicate_df[analyte] = df[good_replicate_cols]
+                self.bad_replicates[analyte] = bad_replicate_cols
             # Plot the results of replicate removal
             if verbose:
                 plt.figure()
@@ -379,14 +418,18 @@ class ReplicateTrial(Base):
         self.blank_subtracted_analytes = []
 
         # for blank_analyte in analytes_with_blanks:
-        for single_trial_key in self.single_trial_dict:
-            single_trial = self.single_trial_dict[single_trial_key]
+        for single_trial in self.single_trials:
             for blank_analyte in analytes_with_blanks:
-                single_trial.analyte_dict[blank_analyte].data_vector = \
-                    single_trial.analyte_dict[blank_analyte].data_vector \
-                    - self.blank.avg.analyte_dict[blank_analyte].data_vector
+                if blank_analyte in single_trial.analyte_dict:
+                    single_trial.analyte_dict[blank_analyte].data_vector = \
+                        single_trial.analyte_dict[blank_analyte].data_vector \
+                        - self.blank.avg.analyte_dict[blank_analyte].data_vector
 
-        self.blank_subtracted_analytes.append(blank_analyte)
+                    #single_trial.analyte_dict[blank_analyte].data_vector = \
+                    #    single_trial.analyte_dict[blank_analyte].data_vector.clip(min = 0)
+                    self.blank_subtracted_analytes.append(blank_analyte)
+        self.blank_subtracted_analytes = list(set(self.blank_subtracted_analytes))
+        self.blank_subtraction_flag = True
 
     def get_unique_analytes(self):
         return list(set([analyte
@@ -395,6 +438,6 @@ class ReplicateTrial(Base):
                         )
                     )
 
-    def link_identifiers(self, trial_identifier, attrs=['strain','media','environment']):
+    def link_identifiers(self, trial_identifier, attrs=['strain', 'media', 'environment']):
         for attr in attrs:
-            setattr(self.trial_identifier,attr,getattr(trial_identifier,attr))
+            setattr(self.trial_identifier, attr, getattr(trial_identifier, attr))

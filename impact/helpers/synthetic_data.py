@@ -32,12 +32,14 @@ def generate_data(y0, t, model, biomass_keys, substrate_keys, product_keys, nois
         Returns a dict with time profiles for each product, substrate and biomass
     """""
 
+    sol = model.optimize()
+
     # Let's assign the data to these variables
-    biomass_flux = [model.solution.x_dict[biomass_keys[0]]]
+    biomass_flux = [sol.x_dict[biomass_keys[0]]]
 
-    substrate_flux = [model.solution.x_dict[substrate_keys[0]]]
+    substrate_flux = [sol.x_dict[substrate_keys[0]]]
 
-    product_flux = [model.solution.x_dict[key] for key in product_keys]
+    product_flux = [sol.x_dict[key] for key in product_keys]
 
     exchange_keys = biomass_keys + substrate_keys + product_keys
 
