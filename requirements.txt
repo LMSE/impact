@@ -3,7 +3,6 @@ numpy>=1.10.4
 pandas
 scipy>=0.17.0
 lmfit==0.8.3
-openpyxl
+openpyxl==2.5.3
 tabulate
-openpyxl
 pyexcel-xlsx
