@@ -260,7 +260,7 @@ class TimeCourse(Base):
         death_phase_start = len(data_vector)
 
         # Check if there is a reasonable difference between the min and max of the curve
-        if (np.max(data_vector) - np.min(data_vector)) / np.min(data_vector) > 2:
+        if (np.max(data_vector) - np.min(data_vector)) / np.min(data_vector) > 1:
             if verbose: print('Growth range: ', (np.max(data_vector) - np.min(data_vector)) / np.min(data_vector))
 
             if use_filtered_data:

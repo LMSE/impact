@@ -156,11 +156,12 @@ class Experiment(Base):
 
             growth_report = pd.DataFrame({'Strain': [str(rep.trial_identifier.strain) for rep in rep_list],
                                           'Media': [str(rep.trial_identifier.media) for rep in rep_list],
+                                          'Environment': [str(rep.trial_identifier.environment) for rep in rep_list],
                                           'Average Growth Rate': avg_list,
                                           '% Difference from Max': percent_diff_max,
                                           '% Error': error_list})
             growth_report = growth_report[
-                ['Strain', 'Media', 'Average Growth Rate', '% Error', '% Difference from Max']]
+                ['Strain', 'Media', 'Environment', 'Average Growth Rate', '% Error', '% Difference from Max']]
             d = dict(selector="th",
                      props=[('text-align', 'left')])
             self.growth_report_html = growth_report.style.set_properties(**{'text-align': 'left'}).set_table_styles([d])

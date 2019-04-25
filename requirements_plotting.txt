@@ -1,3 +1,3 @@
-plotly>=2.7.0
+plotly==2.7.0
 colorlover
 matplotlib>=1.5.1

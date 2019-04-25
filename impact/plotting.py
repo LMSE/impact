@@ -708,7 +708,9 @@ def analyte_bar_trace(replicate_trials=None, feature=None, analyte='OD600', colo
                         cl_scales=['8', 'qual', 'Set1'],
                         label=lambda replicate: str(replicate.trial_identifier.strain)
                                                 + ' '
-                                                + str(replicate.trial_identifier.media),
+                                                + str(replicate.trial_identifier.media)
+                                                + ' '
+                                                + str(replicate.trial_identifier.environment),
                         legendgroup=lambda x: None,
                         showlegend=True,value_to_plot='max'):
 
@@ -816,9 +818,14 @@ def plot_timecourse_orderby_parentstrain(expt=None, feature=None, format=None):
                     if len(rep_list[0].avg.analyte_dict[analyte].time_vector) > 1:
                         tracelist = time_profile_traces(replicate_trials=rep_list, analyte=analyte,
                                                         label=lambda rep: str(rep.trial_identifier.strain) +
-                                                                          " in " + str(rep.trial_identifier.media),
+                                                                          " in " + str(rep.trial_identifier.media) +
+                                                                          " at " +
+                                                                          str(rep.trial_identifier.
+                                                                              environment.temperature) +
+                                                                          "'\u00B0C",
                                                         legendgroup=lambda rep: str(rep.trial_identifier.strain) +
-                                                                                str(rep.trial_identifier.media),
+                                                                                str(rep.trial_identifier.media) +
+                                                                                str(rep.trial_identifier.environment),
                                                         cl_scales=['8', 'qual', 'Dark2'], showlegend=True,
                                                         pts_per_hour=4, feature=feature)
                         if tracelist:
@@ -861,10 +868,15 @@ def plot_timecourse_orderby_plasmids(expt=None, format=None, feature=None):
                 if len(rep_list[0].avg.analyte_dict[analyte].time_vector) > 1:
 
                     tracelist = time_profile_traces(replicate_trials=rep_list, analyte=analyte,
-                                                    label=lambda rep: str(rep.trial_identifier.strain)+
-                                                    " in " + str(rep.trial_identifier.media),
+                                                    label=lambda rep: str(rep.trial_identifier.strain) +
+                                                                          " in " + str(rep.trial_identifier.media) +
+                                                                          " at " +
+                                                                          str(rep.trial_identifier.
+                                                                              environment.temperature) +
+                                                                          "'\u00B0C",
                                                         legendgroup=lambda rep: str(rep.trial_identifier.strain)+
-                                                    str(rep.trial_identifier.media),
+                                                                                str(rep.trial_identifier.media) +
+                                                                                str(rep.trial_identifier.environment),
                                                     cl_scales=['8', 'qual', 'Dark2'], showlegend=True,
                                                     pts_per_hour=4,feature=feature)
                     if tracelist:
@@ -911,9 +923,14 @@ def plot_timecourse_orderby_knockouts(expt=None, format=None, feature=None):
 
                     tracelist = time_profile_traces(replicate_trials=rep_list, analyte=analyte,
                                                     label=lambda rep: str(rep.trial_identifier.strain) +
-                                                                      " in " + str(rep.trial_identifier.media),
+                                                                          " in " + str(rep.trial_identifier.media) +
+                                                                          " at " +
+                                                                          str(rep.trial_identifier.
+                                                                              environment.temperature) +
+                                                                          "'\u00B0C",
                                                     legendgroup=lambda rep: str(rep.trial_identifier.strain) +
-                                                                            str(rep.trial_identifier.media),
+                                                                            str(rep.trial_identifier.media) +
+                                                                            str(rep.trial_identifier.environment),
                                                     cl_scales=['8', 'qual', 'Dark2'], showlegend=True,
                                                     pts_per_hour=4,feature=feature)
                     if tracelist:
@@ -967,9 +984,14 @@ def plot_timecourse_orderby_mediacomponents(expt=None, format=None, feature=None
 
                         tracelist = time_profile_traces(replicate_trials=rep_list, analyte=analyte,
                                                         label=lambda rep: str(rep.trial_identifier.strain) +
-                                                                          " in " + str(rep.trial_identifier.media),
+                                                                          " in " + str(rep.trial_identifier.media) +
+                                                                          " at " +
+                                                                          str(rep.trial_identifier.
+                                                                              environment.temperature) +
+                                                                          "'\u00B0C",
                                                         legendgroup=lambda rep: str(rep.trial_identifier.strain) +
-                                                                                str(rep.trial_identifier.media),
+                                                                                str(rep.trial_identifier.media) +
+                                                                                str(rep.trial_identifier.environment),
                                                         cl_scales=['8', 'qual', 'Dark2'], showlegend=True,
                                                         pts_per_hour=4,feature=feature)
                         if tracelist:
@@ -1006,9 +1028,14 @@ def plot_timecourse_orderby_basemedia(expt=None, format=None,feature=None):
 
                     tracelist = time_profile_traces(replicate_trials=rep_list, analyte=analyte,
                                                     label=lambda rep: str(rep.trial_identifier.strain) +
-                                                    " in " + str(rep.trial_identifier.media),
+                                                                          " in " + str(rep.trial_identifier.media) +
+                                                                          " at " +
+                                                                          str(rep.trial_identifier.
+                                                                              environment.temperature) +
+                                                                          "'\u00B0C",
                                                     legendgroup=lambda rep: str(rep.trial_identifier.strain) +
-                                                                            str(rep.trial_identifier.media),
+                                                                            str(rep.trial_identifier.media) +
+                                                                            str(rep.trial_identifier.environment),
                                                     cl_scales=['8', 'qual', 'Dark2'], showlegend=True,
                                                     pts_per_hour=4,feature=feature)
                     if tracelist:
@@ -1072,10 +1099,15 @@ def plot_analyte_value_orderby_parentstrain(expt=None, feature=None, format=None
 
                     barlist = analyte_bar_trace(replicate_trials=rep_list, feature=feature, analyte=analyte,
                                                     cl_scales=['8', 'qual', 'Dark2'],
-                                                    label=lambda rep: str(rep.trial_identifier.strain)
-                                                    + ' in ' + str(rep.trial_identifier.media),
+                                                    label=lambda rep: str(rep.trial_identifier.strain) +
+                                                                          " in " + str(rep.trial_identifier.media) +
+                                                                          " at " +
+                                                                          str(rep.trial_identifier.
+                                                                              environment.temperature) +
+                                                                          "'\u00B0C",
                                                     legendgroup=lambda rep: str(rep.trial_identifier.strain) +
-                                                                            str(rep.trial_identifier.media),
+                                                                            str(rep.trial_identifier.media) +
+                                                                            str(rep.trial_identifier.environment),
                                                     showlegend=True, value_to_plot=value_to_plot)
                     if barlist:
                         fig = go.Figure(data=barlist)
@@ -1113,10 +1145,15 @@ def plot_analyte_value_orderby_plasmids(expt=None, feature=None, format=None, va
 
                 barlist = analyte_bar_trace(replicate_trials=rep_list, feature=feature, analyte=analyte,
                                                 cl_scales=['8', 'qual', 'Dark2'],
-                                                label=lambda rep: str(rep.trial_identifier.strain)
-                                                + ' in ' + str(rep.trial_identifier.media),
+                                                label=lambda rep: str(rep.trial_identifier.strain) +
+                                                                          " in " + str(rep.trial_identifier.media) +
+                                                                          " at " +
+                                                                          str(rep.trial_identifier.
+                                                                              environment.temperature) +
+                                                                          "'\u00B0C",
                                                 legendgroup=lambda rep: str(rep.trial_identifier.strain) +
-                                                                       str(rep.trial_identifier.media),
+                                                                        str(rep.trial_identifier.media) +
+                                                                        str(rep.trial_identifier.environment),
                                                 showlegend=True,value_to_plot=value_to_plot)
                 if barlist:
                     fig = go.Figure(data=barlist)
@@ -1161,10 +1198,15 @@ def plot_analyte_value_orderby_knockouts(expt=None, feature=None, format=None,va
 
                 barlist = analyte_bar_trace(replicate_trials=rep_list, feature=feature, analyte=analyte,
                                                 cl_scales=['8', 'qual', 'Dark2'],
-                                                label=lambda rep: str(rep.trial_identifier.strain)
-                                                + ' in ' + str(rep.trial_identifier.media),
+                                                label=lambda rep: str(rep.trial_identifier.strain) +
+                                                                          " in " + str(rep.trial_identifier.media) +
+                                                                          " at " +
+                                                                          str(rep.trial_identifier.
+                                                                              environment.temperature) +
+                                                                          "'\u00B0C",
                                                 legendgroup=lambda rep: str(rep.trial_identifier.strain) +
-                                                                        str(rep.trial_identifier.media),
+                                                                        str(rep.trial_identifier.media) +
+                                                                        str(rep.trial_identifier.environment),
                                                 showlegend=True,value_to_plot=value_to_plot)
                 if barlist:
                     fig = go.Figure(data=barlist)
@@ -1209,10 +1251,15 @@ def plot_analyte_value_orderby_basemedia(expt=None, feature=None, format=None,va
 
                     barlist = analyte_bar_trace(replicate_trials=rep_list, feature=feature, analyte=analyte,
                                                     cl_scales=['8', 'qual', 'Dark2'],
-                                                    label=lambda rep: str(rep.trial_identifier.strain)
-                                                    + ' in ' + str(rep.trial_identifier.media),
+                                                    label=lambda rep: str(rep.trial_identifier.strain) +
+                                                                          " in " + str(rep.trial_identifier.media) +
+                                                                          " at " +
+                                                                          str(rep.trial_identifier.
+                                                                              environment.temperature) +
+                                                                          "'\u00B0C",
                                                     legendgroup=lambda rep: str(rep.trial_identifier.strain) +
-                                                                            str(rep.trial_identifier.media),
+                                                                            str(rep.trial_identifier.media) +
+                                                                            str(rep.trial_identifier.environment),
                                                     showlegend=True,value_to_plot=value_to_plot)
                     if barlist:
                         fig = go.Figure(data=barlist)
@@ -1257,10 +1304,15 @@ def plot_analyte_value_orderby_mediacomponents(expt=None, feature=None, format=N
 
                     barlist = analyte_bar_trace(replicate_trials=rep_list, feature=feature, analyte=analyte,
                                                     cl_scales=['8', 'qual', 'Dark2'],
-                                                    label=lambda rep: str(rep.trial_identifier.strain)
-                                                    + ' in ' + str(rep.trial_identifier.media),
+                                                    label=lambda rep: str(rep.trial_identifier.strain) +
+                                                                          " in " + str(rep.trial_identifier.media) +
+                                                                          " at " +
+                                                                          str(rep.trial_identifier.
+                                                                              environment.temperature) +
+                                                                          "'\u00B0C",
                                                     legendgroup=lambda rep: str(rep.trial_identifier.strain) +
-                                                                            str(rep.trial_identifier.media),
+                                                                            str(rep.trial_identifier.media) +
+                                                                            str(rep.trial_identifier.environment),
                                                     showlegend=True,value_to_plot=value_to_plot)
                     if barlist:
                         fig = go.Figure(data=barlist)
