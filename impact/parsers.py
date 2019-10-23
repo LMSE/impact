@@ -1,6 +1,5 @@
 import copy
 import datetime
-import time
 import time as sys_time
 import pandas as pd
 import numpy as np
@@ -160,7 +159,9 @@ def tecan(experiment, data, id_type='traverse', plate_type='96 Wells'):
     # Add new analytes/reporters in this dictionary
     mode_dict = {'Absorbance': {600: {'analyte_name': 'OD600', 'analyte_type': 'biomass'},
 
-                                700: {'analyte_name': 'OD700', 'analyte_type': 'biomass'}},
+                                700: {'analyte_name': 'OD700', 'analyte_type': 'biomass'},
+
+                                660: {'analyte_name': 'OD660', 'analyte_type':'biomass'}},
 
                  'Fluorescence Top Reading': {(488, 525): {'analyte_name': 'GFP',
                                                            'analyte_type': 'reporter'},
@@ -209,14 +210,14 @@ def tecan(experiment, data, id_type='traverse', plate_type='96 Wells'):
                     analyte_dict[num_of_analytes] = {'analyte_name': 'Reporter' + str(ex) + '/' + str(em),
                                                      'analyte_type': 'reporter'}
 
-        elif 'Time [s]' in row:
+        elif 'Cycle Nr.' in row:
             time_row_index.append(i)
 
     timepoint_list = []
     identifiers = []
     for i, row in enumerate(unparsed_identifiers):
         parsed_row = []
-        for j, data in enumerate(row):
+        for j, identifier in enumerate(row):
             if unparsed_identifiers[i][j] not in ['', 0, '0', None]:
                 temp_trial_identifier = TimeCourseIdentifier()
                 if id_type == 'CSV':
@@ -230,34 +231,78 @@ def tecan(experiment, data, id_type='traverse', plate_type='96 Wells'):
     print('Extracting timepoint data...', end='')
     t0 = sys_time.time()
     for analyte_num in range(num_of_analytes):
-        data_start_index = time_row_index[analyte_num] + 2
-        num_of_timepoints = len(raw_data[time_row_index[analyte_num]]) - 1
-        for i, data_column_index in enumerate(range(1, num_of_timepoints + 1)):
-            time = raw_data[time_row_index[analyte_num]][data_column_index]
-            time = (time / 3600)
-            for j, data_row_index in enumerate(range(data_start_index, data_start_index + plate_dict[plate_type] \
-                    ['num_of_wells'])):
-                try:
-                    identifier = identifiers[int(j / plate_dict[plate_type]['num_of_columns'])] \
-                        [int(j % plate_dict[plate_type]['num_of_columns'])]
-                except IndexError:
-                    identifier_exists = False
-                else:
-                    identifier_exists = True
-                if identifier_exists:
-                    if identifier is not None and raw_data[data_row_index][data_column_index] not in [None, '']:
-                        temp_trial_identifier = copy.deepcopy(identifiers[int(j / plate_dict[plate_type]['num_of_columns'])] \
-                                                                  [int(j % plate_dict[plate_type]['num_of_columns'])])
-                        temp_trial_identifier.analyte_type = analyte_dict[analyte_num + 1]['analyte_type']
-                        temp_trial_identifier.analyte_name = analyte_dict[analyte_num + 1]['analyte_name']
+        if 'Time [s]' not in raw_data[time_row_index[analyte_num]]:  # different wells as distinct rows
+            time_row_index[analyte_num] += 1
+            data_start_index = time_row_index[analyte_num] + 2
+            num_of_timepoints = len(raw_data[time_row_index[analyte_num]]) - 1
+            for i, data_column_index in enumerate(range(1, num_of_timepoints + 1)):
+                time = raw_data[time_row_index[analyte_num]][data_column_index]
+                if time is not None:
+                    time = (time / 3600)
+                    for j, data_row_index in enumerate(
+                            range(data_start_index, data_start_index + plate_dict[plate_type]['num_of_wells'])):
                         try:
-                            temp_timepoint = TimePoint(temp_trial_identifier, time,
-                                                       float(raw_data[data_row_index][data_column_index]))
-                        except Exception as e:
-                            print(raw_data[data_row_index][data_column_index])
-                            raise Exception(e)
-                        timepoint_list.append(temp_timepoint)
+                            identifier = identifiers[int(j / plate_dict[plate_type]['num_of_columns'])] \
+                                [int(j % plate_dict[plate_type]['num_of_columns'])]
+                        except IndexError:
+                            identifier_exists = False
+                        else:
+                            identifier_exists = True
+                        if identifier_exists:
+                            if identifier is not None and raw_data[data_row_index][data_column_index] not in [None, '']:
+                                temp_trial_identifier = copy.deepcopy(
+                                    identifiers[int(j / plate_dict[plate_type]['num_of_columns'])] \
+                                        [int(j % plate_dict[plate_type]['num_of_columns'])])
+                                temp_trial_identifier.analyte_type = analyte_dict[analyte_num + 1]['analyte_type']
+                                temp_trial_identifier.analyte_name = analyte_dict[analyte_num + 1]['analyte_name']
+                                try:
+                                    temp_timepoint = TimePoint(temp_trial_identifier, time,
+                                                               float(raw_data[data_row_index][data_column_index]))
+                                except Exception as e:
+                                    print(raw_data[data_row_index][data_column_index])
+                                    raise Exception(e)
+                                timepoint_list.append(temp_timepoint)
+        else:  # different timepoints as distinct rows
+            time_column = 1
+            data_start_column = 3
+            data_start_index = [index + 1 for index in time_row_index]
+            try:
+                num_of_timepoints = next(
+                    index for index, element in enumerate(raw_data[data_start_index[analyte_num]:]) if
+                    element[0] in ['Cycle Nr.', 'End Time']) - 1
+            except StopIteration:
+                num_of_timepoints = [index for index, element in enumerate(raw_data[data_start_index[analyte_num]:])][
+                    -1]
 
+            for i, data_row_index in enumerate(
+                    range(data_start_index[analyte_num], data_start_index[analyte_num] + num_of_timepoints)):
+                time = raw_data[data_row_index][time_column]
+                if time is not None:
+                    time = (time / 3600)
+                    for j, data_column_index in enumerate(
+                            range(data_start_column, data_start_column + plate_dict[plate_type]['num_of_wells'])):
+                        try:
+                            identifier = identifiers[int(j / plate_dict[plate_type]['num_of_columns'])] \
+                                [int(j % plate_dict[plate_type]['num_of_columns'])]
+
+                        except IndexError:
+                            identifier_exists = False
+                        else:
+                            identifier_exists = True
+                        if identifier_exists:
+                            if identifier is not None and raw_data[data_row_index][data_column_index] not in [None, '']:
+                                temp_trial_identifier = copy.deepcopy(
+                                    identifiers[int(j / plate_dict[plate_type]['num_of_columns'])] \
+                                        [int(j % plate_dict[plate_type]['num_of_columns'])])
+                                temp_trial_identifier.analyte_type = analyte_dict[analyte_num + 1]['analyte_type']
+                                temp_trial_identifier.analyte_name = analyte_dict[analyte_num + 1]['analyte_name']
+                                try:
+                                    temp_timepoint = TimePoint(temp_trial_identifier, time,
+                                                               float(raw_data[data_row_index][data_column_index]))
+                                except Exception as e:
+                                    print(raw_data[data_row_index][data_column_index])
+                                    raise Exception(e)
+                                timepoint_list.append(temp_timepoint)
     tf = sys_time.time()
     print("Extracted time point data in %0.1fs" % ((tf - t0)))
 
@@ -296,7 +341,7 @@ class Parser(object):
             from .core.Experiment import Experiment
             experiment = Experiment()
 
-        t0 = time.time()
+        t0 = sys_time.time()
         if data_format is None:
             raise Exception('No format defined')
 
@@ -308,7 +353,7 @@ class Parser(object):
             print('\nImporting data from %s...' % (file_name), end='')
             # data = get_data(file_name)
             xls_data = load_workbook(filename=file_name, data_only=True)
-            print('%0.1fs' % (time.time() - t0))
+            print('%0.1fs' % (sys_time.time() - t0))
 
             # Extract data from sheets
             data = {sheet.title: [[elem.value if elem is not None else None for elem in row]
@@ -354,7 +399,7 @@ def parse_raw_data(format=None, id_type='CSV', file_name=None, data=None, experi
         from .core.Experiment import Experiment
         experiment = Experiment()
 
-    t0 = time.time()
+    t0 = sys_time.time()
     if format is None:
         raise Exception('No format defined')
 
@@ -366,7 +411,7 @@ def parse_raw_data(format=None, id_type='CSV', file_name=None, data=None, experi
         print('\nImporting data from %s...' % (file_name), end='')
         # data = get_data(file_name)
         xls_data = load_workbook(filename=file_name, data_only=True)
-        print('%0.1fs' % (time.time() - t0))
+        print('%0.1fs' % (sys_time.time() - t0))
 
         # Extract data from sheets
         data = {sheet.title: [[elem.value if elem is not None else None for elem in row]
@@ -389,7 +434,7 @@ def parse_raw_data(format=None, id_type='CSV', file_name=None, data=None, experi
 
 def parse_analyte_data(analyte_data_list):
     print('Parsing analyte list...', end='')
-    t0 = time.time()
+    t0 = sys_time.time()
 
     uniques = list(set([titer.trial_identifier.unique_single_trial() for titer in analyte_data_list]))
 
@@ -401,7 +446,7 @@ def parse_analyte_data(analyte_data_list):
                 single_trial.add_analyte_data(titer)
         single_trial_list.append(single_trial)
 
-    tf = time.time()
+    tf = sys_time.time()
     print("Parsed %i single trials in %0.1fms" % (len(single_trial_list), (tf - t0) * 1000))
 
     return parse_single_trial_list(single_trial_list)
@@ -409,7 +454,7 @@ def parse_analyte_data(analyte_data_list):
 
 def parse_time_point_list(time_point_list):
     print('Parsing time point list...', end='')
-    t0 = time.time()
+    t0 = sys_time.time()
     analyte_dict = {}
     for timePoint in time_point_list:
         if timePoint.get_unique_timepoint_id() in analyte_dict:
@@ -429,14 +474,14 @@ def parse_time_point_list(time_point_list):
         analyte.pd_series = pd.Series([timePoint.data for timePoint in analyte.time_points],
                                            index=[timePoint.time for timePoint in analyte.time_points])
 
-    tf = time.time()
+    tf = sys_time.time()
     print("Parsed %i time points in %0.1fs" % (len(time_point_list), (tf - t0)))
     return parse_analyte_data(list(analyte_dict.values()))
 
 
 def parse_single_trial_list(single_trial_list):
     print('Parsing single trial list...', end='')
-    t0 = time.time()
+    t0 = sys_time.time()
     uniques = list(set([single_trial.trial_identifier.unique_replicate_trial()
                         for single_trial in single_trial_list]
                        )
@@ -450,6 +495,6 @@ def parse_single_trial_list(single_trial_list):
             replicate_trial.add_replicate(replicate)
         replicate_trial_list.append(replicate_trial)
 
-    tf = time.time()
+    tf = sys_time.time()
     print("Parsed %i replicates in %0.1fs" % (len(replicate_trial_list), (tf - t0)))
     return replicate_trial_list

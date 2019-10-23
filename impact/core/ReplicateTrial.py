@@ -246,6 +246,9 @@ class ReplicateTrial(Base):
                                   if analyte in single_trial.analyte_dict
                                   and feature.name in single_trial.analyte_dict[analyte].__dict__]
                     if len(trial_list)>0:
+                        biomass_labels = ['OD600', 'OD700', 'OD660']
+                        biomass_analyte = [analyte_name for analyte_name in trial_list[0].analyte_dict if
+                                           analyte_name in biomass_labels][0]
                         single_trial_var = []
                         single_trial_data = []
                         for trial in trial_list:
@@ -255,13 +258,14 @@ class ReplicateTrial(Base):
                                 single_trial_data.append(feature_data)
                             if self.blank:
                                 with np.errstate(divide='ignore'):
+
                                     temp_var = np.square(feature_data)*(np.square(self.blank.std.analyte_dict[analyte].pd_series\
 
                                                /trial.analyte_dict[analyte].pd_series)+
-                                                np.square(self.blank.std.analyte_dict['OD600'].pd_series
-                                                          /trial.analyte_dict['OD600'].pd_series))
+                                                np.square(self.blank.std.analyte_dict[biomass_analyte].pd_series
+                                                          /trial.analyte_dict[biomass_analyte].pd_series))
                                     temp_var[trial.analyte_dict[analyte].pd_series == 0] = 0
-                                    temp_var[trial.analyte_dict['OD600'].pd_series == 0] = 0
+                                    temp_var[trial.analyte_dict[biomass_analyte].pd_series == 0] = 0
                                     single_trial_var.append(temp_var)
                         if single_trial_data:
                             rep_mean = sum(single_trial_data)/len(trial_list)
