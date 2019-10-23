@@ -142,7 +142,7 @@ class Experiment(Base):
 
         if settings.perform_curve_fit and 'OD600' in self.analyte_names:
             rep_list = [rep for rep in self.replicate_trials if
-                        rep.trial_identifier.strain.name not in ['blank', 'none']]
+                        rep.trial_identifier.strain.name.lower() not in ['blank', 'none']]
             rep_list = sorted(rep_list, key=lambda rep: str(rep.trial_identifier))
             avg_list = []
             error_list = []

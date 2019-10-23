@@ -251,13 +251,14 @@ class TimeCourse(Base):
                                                               verbose = verbose)
 
     @staticmethod
-    def find_death_phase_static(data_vector, use_filtered_data=False, verbose=False, hyper_parameter = 1):
+    def find_death_phase_static(data_vector, use_filtered_data=False, verbose=False):
         # The hyper_parameter determines the number of points
         # which need to have a negative diff to consider it death phase
 
         from ..settings import settings
         savgol_filter_window_size = settings.savgolFilterWindowSize
         death_phase_start = len(data_vector)
+        hyper_parameter = settings.death_phase_hyperparameter
 
         # Check if there is a reasonable difference between the min and max of the curve
         if (np.max(data_vector) - np.min(data_vector)) / np.min(data_vector) > 1:

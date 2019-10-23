@@ -26,6 +26,7 @@ class Settings(Base):
     remove_death_phase_flag = Column(Boolean)
     use_filtered_data = Column(Boolean)
     minimum_points_for_curve_fit = Column(Integer)
+    death_phase_hyperparameter = Column(Integer)
     savgolFilterWindowSize = Column(Integer)  # Must be odd
     perform_curve_fit = Column(Boolean)
 
@@ -46,6 +47,7 @@ class Settings(Base):
         self.remove_death_phase_flag = False
         self.use_filtered_data = False
         self.minimum_points_for_curve_fit = 5
+        self.death_phase_hyperparameter = 1
         self.savgolFilterWindowSize = 17  # Must be odd
         self.perform_curve_fit = False
 
