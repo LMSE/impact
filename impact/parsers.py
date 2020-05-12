@@ -357,7 +357,8 @@ class Parser(object):
 
             # Extract data from sheets
             data = {sheet.title: [[elem.value if elem is not None else None for elem in row]
-                                  for row in xls_data[sheet.title]] for sheet in xls_data}
+                                  for row in xls_data[sheet.title]]
+                                  if xls_data[sheet.title].max_row > 1 else None for sheet in xls_data}
 
         if data_format in cls.parser_case_dict.keys():
             cls.parser_case_dict[data_format](experiment, data=data, id_type=id_type, plate_type = plate_type)
@@ -415,7 +416,8 @@ def parse_raw_data(format=None, id_type='CSV', file_name=None, data=None, experi
 
         # Extract data from sheets
         data = {sheet.title: [[elem.value if elem is not None else None for elem in row]
-                              for row in xls_data[sheet.title]] for sheet in xls_data}
+                              for row in xls_data[sheet.title]]
+                              if xls_data[sheet.title].max_row > 1 else None for sheet in xls_data}
 
     # Import parsers
     parser_case_dict = {'spectromax_OD'           : spectromax_OD,

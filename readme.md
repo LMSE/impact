@@ -4,6 +4,8 @@
 
 # Impact: a framework for analyzing microbial physiology
 
+Associated with the research article: "Impact framework: A python package for writing data analysis workflows to interpret microbial physiology" https://doi.org/10.1016/j.mec.2019.e00089.
+
 Impact assists scientists and engineers to interpret data describing microbial physiology.
 Impact parses raw data from common equipment such as chromatography (HPLC), 
 and plate readers. Data is automatically interpreted and built into hierarchical objects
