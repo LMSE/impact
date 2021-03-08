@@ -245,6 +245,8 @@ class TimeCourse(Base):
     def find_death_phase(self, data_vector):
         from ..settings import settings
         use_filtered_data = settings.use_filtered_data
+        if len(self.pd_series) < self.savgol_filter_window_size:
+            use_filtered_data = False
         verbose = settings.verbose
         self.death_phase_start = self.find_death_phase_static(data_vector,
                                                               use_filtered_data = use_filtered_data,
