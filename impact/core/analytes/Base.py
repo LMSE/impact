@@ -312,7 +312,6 @@ class TimeCourse(Base):
         self.time_points.append(time_point)
         if len(self.time_points) == 1:
             self.trial_identifier = time_point.trial_identifier
-            self.pd_series = pd.Series([time_point.data],index=[time_point.time])
         else:
             if self.time_points[-1].trial_identifier.unique_single_trial() \
                     != self.time_points[-2].trial_identifier.unique_single_trial():
@@ -326,11 +325,7 @@ class TimeCourse(Base):
                 self.time_points.sort(key=lambda timePoint: timePoint.time)
 
 
-        if sum(self.pd_series.index.duplicated()) > 0:
-            print(self.pd_series)
-            print(self.trial_identifier)
-            print(time_point.trial_identifier)
-            raise Exception('Duplicate time points found, this is not supported - likely an identifier input error')
+
 
     def curve_fit_data(self):
         raise Exception('This must be implemented in a child')

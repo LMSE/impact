@@ -475,6 +475,11 @@ def parse_time_point_list(time_point_list):
     for analyte in analyte_dict.values():
         analyte.pd_series = pd.Series([timePoint.data for timePoint in analyte.time_points],
                                            index=[timePoint.time for timePoint in analyte.time_points])
+        if sum(analyte.pd_series.index.duplicated()) > 0:
+            print(analyte.pd_series)
+            print(analyte.trial_identifier)
+            print(analyte.pd_series[analyte.pd_series.index.duplicated()])
+            raise Exception('Duplicate time points found, this is not supported - likely an identifier input error')
 
     tf = sys_time.time()
     print("Parsed %i time points in %0.1fs" % (len(time_point_list), (tf - t0)))
