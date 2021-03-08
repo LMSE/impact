@@ -228,7 +228,6 @@ class ReplicateTrial(Base):
             self.avg.analyte_dict[analyte].pd_series = self.replicate_df[analyte].mean(axis=1)
             self.std.analyte_dict[analyte].pd_series = self.replicate_df[analyte].std(axis=1)
 
-            #This is the right way to calculate standard deviations for blank subtraction. You must add the two variances
             if self.blank_subtraction_flag and analyte in self.blank_subtracted_analytes:
                 self.std.analyte_dict[analyte].pd_series = np.sqrt(np.square(self.std.analyte_dict[analyte].pd_series)
                                                             + np.square(self.blank.std.analyte_dict[analyte].pd_series))
@@ -379,7 +378,7 @@ class ReplicateTrial(Base):
                     # A value between 0 and 1, > 1 means removing the replicate makes the yield worse
 
                     # df = pd.DataFrame({key: np.random.randn(5) for key in ['a', 'b', 'c']})
-                    std_by_mean = np.mean(abs(backup.std(axis = 1)/backup.mean(axis = 1)))
+                    std_by_mean = np.mean(abs(df.std(axis=1)/df.mean(axis=1)))
                     temp_std_by_mean = {}
                     for temp_remove_replicate in list(df.columns.values):
                         indices = [replicate for i, replicate in enumerate(df.columns.values) if
@@ -390,7 +389,7 @@ class ReplicateTrial(Base):
                         temp_std_by_mean[temp_remove_replicate] = np.mean(abs(temp_std / temp_mean))
 
                     temp_min_val = min([temp_std_by_mean[key] for key in temp_std_by_mean])
-                    if temp_min_val < std_deviation_cutoff and temp_min_val < std_by_mean:
+                    if abs(temp_min_val-std_by_mean) >= std_deviation_cutoff and temp_min_val < std_by_mean:
                         bad_replicate_cols.append(
                             [key for key in temp_std_by_mean if temp_std_by_mean[key] == temp_min_val][0])
 
@@ -425,13 +424,13 @@ class ReplicateTrial(Base):
         for single_trial in self.single_trials:
             for blank_analyte in analytes_with_blanks:
                 if blank_analyte in single_trial.analyte_dict:
-                    single_trial.analyte_dict[blank_analyte].data_vector = \
-                        single_trial.analyte_dict[blank_analyte].data_vector \
-                        - self.blank.avg.analyte_dict[blank_analyte].data_vector
+                    single_trial.analyte_dict[blank_analyte].pd_series = \
+                        single_trial.analyte_dict[blank_analyte].pd_series \
+                        - self.blank.avg.analyte_dict[blank_analyte].pd_series
 
                     #single_trial.analyte_dict[blank_analyte].data_vector = \
                     #    single_trial.analyte_dict[blank_analyte].data_vector.clip(min = 0)
-                    self.blank_subtracted_analytes.append(blank_analyte)
+                self.blank_subtracted_analytes.append(blank_analyte)
         self.blank_subtracted_analytes = list(set(self.blank_subtracted_analytes))
         self.blank_subtraction_flag = True
 
