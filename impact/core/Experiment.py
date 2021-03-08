@@ -1,4 +1,5 @@
 import sqlite3 as sql
+import sqlite3 as sql
 import time
 
 from .AnalyteData import TimeCourse, Biomass, Product, Substrate, Reporter
@@ -140,15 +141,21 @@ class Experiment(Base):
                     repstage.calculate()
         print("Ran analysis in %0.1fs\n" % ((time.time() - t0)))
 
-        if settings.perform_curve_fit and 'OD600' in self.analyte_names:
+        biomass_analyte = None
+        if 'OD600' in self.analyte_names:
+            biomass_analyte = 'OD600'
+        elif 'OD700' in self.analyte_names:
+            biomass_analyte = 'OD700'
+
+        if settings.perform_curve_fit and biomass_analyte:
             rep_list = [rep for rep in self.replicate_trials if
                         rep.trial_identifier.strain.name.lower() not in ['blank', 'none']]
             rep_list = sorted(rep_list, key=lambda rep: str(rep.trial_identifier))
             avg_list = []
             error_list = []
             for rep in rep_list:
-                avg_growth = rep.avg.analyte_dict['OD600'].fit_params['growth_rate'].parameter_value
-                std_growth = rep.std.analyte_dict['OD600'].fit_params['growth_rate'].parameter_value
+                avg_growth = rep.avg.analyte_dict[biomass_analyte].fit_params['growth_rate'].parameter_value
+                std_growth = rep.std.analyte_dict[biomass_analyte].fit_params['growth_rate'].parameter_value
                 avg_list.append(avg_growth)
                 error_list.append(std_growth / avg_growth * 100)
             max_growth_rate = max(avg_list)
