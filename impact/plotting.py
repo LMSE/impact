@@ -661,7 +661,7 @@ def time_profile_traces(replicate_trials=None, feature=None, analyte='OD600', co
 
     if colors is None:
         colors = get_colors(len(replicate_trials), colors=colors, cl_scales=cl_scales)
-
+    replicate_trials = sorted(replicate_trials, key=lambda rep: str(rep.trial_identifier))
     for index, replicate in enumerate(replicate_trials):
         # Determine how many points should be plotted
         required_num_pts = replicate.t[-1] * pts_per_hour
@@ -1407,8 +1407,12 @@ def plot_growth_curve_fit(expt=None, format=None):
             fig['layout'].update(title='Growth curve fit for ' + str(rep.trial_identifier))
             fig['layout']['yaxis1'].update(title='OD600')
             plot(fig, image=format)
-            avg_growth = rep.avg.analyte_dict['OD600'].fit_params['growth_rate'].parameter_value
-            std_growth = rep.std.analyte_dict['OD600'].fit_params['growth_rate'].parameter_value
+            if 'OD600' in rep.avg.analyte_dict:
+                avg_growth = rep.avg.analyte_dict['OD600'].fit_params['growth_rate'].parameter_value
+                std_growth = rep.std.analyte_dict['OD600'].fit_params['growth_rate'].parameter_value
+            elif 'OD700' in rep.avg.analyte_dict:
+                avg_growth = rep.avg.analyte_dict['OD700'].fit_params['growth_rate'].parameter_value
+                std_growth = rep.std.analyte_dict['OD700'].fit_params['growth_rate'].parameter_value
             print("\u03BC\u2090\u1D65 = %3.3f \u00B1 %3.3f /h" % (avg_growth, std_growth))
     else:
         print("Curve fitting was not implemented for this experiment. Please check Impact settings.")
