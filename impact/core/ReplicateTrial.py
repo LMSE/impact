@@ -228,9 +228,9 @@ class ReplicateTrial(Base):
             self.avg.analyte_dict[analyte].pd_series = self.replicate_df[analyte].mean(axis=1)
             self.std.analyte_dict[analyte].pd_series = self.replicate_df[analyte].std(axis=1)
 
-            if self.blank_subtraction_flag and analyte in self.blank_subtracted_analytes:
-                self.std.analyte_dict[analyte].pd_series = np.sqrt(np.square(self.std.analyte_dict[analyte].pd_series)
-                                                            + np.square(self.blank.std.analyte_dict[analyte].pd_series))
+            #if self.blank_subtraction_flag and analyte in self.blank_subtracted_analytes:
+            #    self.std.analyte_dict[analyte].pd_series = np.sqrt(np.square(self.std.analyte_dict[analyte].pd_series)
+            #                                                + np.square(self.blank.std.analyte_dict[analyte].pd_series))
             #Assume that stdev for all values <0 is simply 0 since negative values are forced to be 0.
             #Negative values of any analyte in this context is not possible
             #self.std.analyte_dict[analyte].pd_series[self.avg.analyte_dict[analyte].pd_series<=0] = 0
@@ -255,17 +255,17 @@ class ReplicateTrial(Base):
                             feature_data = feature_object.data
                             if feature_data is not None:
                                 single_trial_data.append(feature_data)
-                            if self.blank:
-                                with np.errstate(divide='ignore'):
+                            #if self.blank:
+                            #    with np.errstate(divide='ignore'):
 
-                                    temp_var = np.square(feature_data)*(np.square(self.blank.std.analyte_dict[analyte].pd_series\
-
-                                               /trial.analyte_dict[analyte].pd_series)+
-                                                np.square(self.blank.std.analyte_dict[biomass_analyte].pd_series
-                                                          /trial.analyte_dict[biomass_analyte].pd_series))
-                                    temp_var[trial.analyte_dict[analyte].pd_series == 0] = 0
-                                    temp_var[trial.analyte_dict[biomass_analyte].pd_series == 0] = 0
-                                    single_trial_var.append(temp_var)
+                                    # temp_var = np.square(feature_data)*(np.square(self.blank.std.analyte_dict[analyte].pd_series\
+                                    #
+                                    #            /trial.analyte_dict[analyte].data_vector)+
+                                    #             np.square(self.blank.std.analyte_dict[biomass_analyte].pd_series
+                                    #                       /trial.analyte_dict[biomass_analyte].data_vector))
+                                    # temp_var[trial.analyte_dict[analyte].pd_series == 0] = 0
+                                    # temp_var[trial.analyte_dict[biomass_analyte].pd_series == 0] = 0
+                                    # single_trial_var.append(temp_var)
                         if single_trial_data:
                             rep_mean = sum(single_trial_data)/len(trial_list)
                         else:
@@ -275,8 +275,8 @@ class ReplicateTrial(Base):
                         rep_var = pd.Series(data=np.var(single_trial_data,axis=0),index=trial_list[-1].analyte_dict[analyte].time_vector)
                         # Variance on dataset due to blanks is average of individual standard deviation squared.
                         # Total variance is variance due to blanks + variance between individual normalized datapoints
-                        if self.blank:
-                            rep_var = sum(single_trial_var)/np.square(len(single_trial_var)) + rep_var
+                        #if self.blank:
+                        #    rep_var = sum(single_trial_var)/np.square(len(single_trial_var)) + rep_var
 
                         setattr(self.std.analyte_dict[analyte], feature.name, np.sqrt(rep_var).values)
                         setattr(self.avg.analyte_dict[analyte], feature.name, rep_mean)
