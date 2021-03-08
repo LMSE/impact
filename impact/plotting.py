@@ -291,7 +291,7 @@ def printGenericTimeCourse_plotly(replicateTrialList=None, dbName=None, strainsT
                 else:
                     y_avg = [replicate.avg.analyte_dict[product].data_vector for replicate in replicateTrialList
                              if getattr(replicate.trial_identifier, sortBy) == unique or sort_by_flag is False]
-                    y_std = [replicate.std.analyte_dict[product].data_vector for replicate in replicateTrialList
+                    y_std = [replicate.std.analyte_dict[product].pd_series.values for replicate in replicateTrialList
                              if getattr(replicate.trial_identifier, sortBy) == unique or sort_by_flag is False]
                     label = ' titer (g/L)'
 
@@ -491,7 +491,7 @@ def print_generic_timecourse_plotly(replicate_trial_list, product, colors, pts_p
             if product != 'OD600':
                 dataLabel = '<br>titer (g/L)'
             y_avg = replicate.avg.analyte_dict[product].data_vector[::removePointFraction]
-            y_std = replicate.std.analyte_dict[product].data_vector[::removePointFraction]
+            y_std = replicate.std.analyte_dict[product].pd_series.values[::removePointFraction]
         elif normalize_to is not None:
             y_avg = replicate.avg.analyte_dict[product].get_normalized_data(normalize_to)[
                     ::removePointFraction]
@@ -672,7 +672,7 @@ def time_profile_traces(replicate_trials=None, feature=None, analyte='OD600', co
                                  y=replicate.avg.analyte_dict[analyte].data_vector[::removePointFraction],
                                  error_y={
                                      'type'   : 'data',
-                                     'array'  : replicate.std.analyte_dict[analyte].data_vector[::removePointFraction],
+                                     'array'  : replicate.std.analyte_dict[analyte].pd_series.values[::removePointFraction],
                                      'visible': True,
                                      'color'  : colors[index]},
                                  # mode=mode,
@@ -735,7 +735,7 @@ def analyte_bar_trace(replicate_trials=None, feature=None, analyte='OD600', colo
                 print("That is not a valid point")
                 return None
             data_point = replicate.avg.analyte_dict[analyte].data_vector[index_to_plot]
-            error = replicate.std.analyte_dict[analyte].data_vector[index_to_plot]
+            error = replicate.std.analyte_dict[analyte].pd_series.values[index_to_plot]
 
             x_list.append(str(replicate.trial_identifier.strain) +" in " + str(replicate.trial_identifier.media))
             y_list.append(data_point)
