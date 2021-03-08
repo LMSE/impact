@@ -427,7 +427,7 @@ class ReplicateTrial(Base):
                     single_trial.analyte_dict[blank_analyte].pd_series = \
                         single_trial.analyte_dict[blank_analyte].pd_series \
                         - self.blank.avg.analyte_dict[blank_analyte].pd_series
-
+                    single_trial.analyte_dict[blank_analyte].generate_time_point_list()
                     #single_trial.analyte_dict[blank_analyte].data_vector = \
                     #    single_trial.analyte_dict[blank_analyte].data_vector.clip(min = 0)
                 self.blank_subtracted_analytes.append(blank_analyte)
