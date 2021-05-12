@@ -15,7 +15,5 @@ class Product(TimeCourse):
         from ..settings import settings
         verbose = settings.verbose
 
-        if self.trial_identifier.analyte_type == 'product':
-            raise Exception('Product curve fitting not implemented')
-        else:
+        if self.trial_identifier.analyte_type != 'product':
             raise Exception('Incorrect analyte_type')
