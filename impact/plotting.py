@@ -44,7 +44,6 @@ else:
 
 from plotly import tools
 import plotly.graph_objs as go
-import plotly.plotly as py
 import colorlover as cl
 import math
 
@@ -434,7 +433,6 @@ def render_output_ploty(output_type, fig, number_of_columns=None, column_width_m
         plotly.tools.set_credentials_file(username=plotly_username, api_key=plotly_api_key)
         fig['layout'].update(width=number_of_columns * column_width_multiplier)
         random_file_name = ''.join(random.choice(string.ascii_letters) for _ in range(10)) + '.png'
-        py.image.save_as(fig, random_file_name, scale=img_scale)
         return random_file_name
 
 
