@@ -68,13 +68,11 @@ class TestDatabase(unittest.TestCase):
             tc.add_timepoint(impt.TimePoint(trial_identifier=ti, time=time, data=data))
         tc.pd_series = pd.Series([timePoint.data for timePoint in tc.time_points],index=[timePoint.time for timePoint in\
                                                                                          tc.time_points])
-        print(tc.data_vector)
         self.session.add(tc)
         self.session.commit()
 
         del tc
         tc = self.session.query(impt.TimeCourse).all()[0]
-        print(tc.data_vector)
         tc.calculate()
 
         self.assertCountEqual(tc.data_vector,[0,5,10])
