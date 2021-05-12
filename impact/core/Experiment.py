@@ -1,17 +1,8 @@
-import sqlite3 as sql
-import sqlite3 as sql
 import time
 
 from .AnalyteData import TimeCourse, Biomass, Product, Substrate, Reporter
 from .ReplicateTrial import ReplicateTrial
 from .SingleTrial import SingleTrial
-
-try:
-    from pyexcel_xlsx import get_data
-except ImportError as e:
-    print('Could not import pyexcel')
-    print(e)
-    pass
 
 from ..database import Base
 from sqlalchemy import Column, Integer, ForeignKey, Float, Date, String, event
